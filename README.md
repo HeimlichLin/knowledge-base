@@ -14,6 +14,7 @@
 knowledge-base/
 ├── index.md              # 首頁
 ├── _config.yml           # Jekyll 配置檔
+├── Gemfile               # Ruby 依賴配置
 ├── notes/                # 筆記資料夾
 │   ├── programming/      # 程式設計相關
 │   ├── tools/            # 工具使用相關
@@ -38,7 +39,7 @@ knowledge-base/
 如果想在本地預覽，可以安裝 Jekyll 並執行：
 
 ```bash
-gem install bundler jekyll
+gem install bundler
 bundle install
 bundle exec jekyll serve
 ```
