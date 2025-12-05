@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google AI 知識管理解決方案評估 (AI Powered)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bg: '#F9F9F7',
+                        text: '#1F2937',
+                        nbGreen: '#10B981',
+                        geminiBlue: '#3B82F6',
+                        vertexPurple: '#8B5CF6',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 核心佈局設定 */
+        body { 
+            background-color: #F9F9F7; 
+            color: #1F2937; 
+            height: 100vh; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        main {
+            flex: 1;
+            overflow: hidden; 
+            position: relative;
+        }
+
+        .chart-container { 
+            position: relative; 
+            height: 100%; 
+            min-height: 300px;
+            max-height: 400px; 
+            width: 100%; 
+            margin: 0 auto; 
+        }
+        
+        .page-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            height: 100%;        
+            overflow-y: auto;    
+            padding-bottom: 20px; /* 減少底部留白 */
+        }
+        
+        .page-section.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* 決策幫手按鈕樣式 */
+        .choice-btn {
+            border: 1px solid #E5E7EB;
+            background: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .choice-btn:hover {
+            border-color: #9CA3AF;
+        }
+        .choice-btn.selected {
+            background-color: #EFF6FF; /* Blue-50 */
+            border-color: #3B82F6;
+            color: #1E40AF;
+            font-weight: 600;
+        }
+        .choice-btn.selected::after {
+            content: '✓';
+            font-weight: bold;
+        }
+
+        /* Gemini Loading Animation */
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #3B82F6;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out both;
+            margin: 0 2px;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Markdown Styles */
+        .prose h3 { font-size: 1.1em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #1F2937; }
+        .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+        .prose li { margin-bottom: 0.25em; color: #4B5563; font-size: 0.95em; }
+        .prose strong { color: #111827; font-weight: 600; }
+        .prose p { margin-bottom: 0.8em; line-height: 1.6; font-size: 0.95em; }
+
+        /* 自定義捲軸 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-gray-200 shadow-sm z-50 flex-none h-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+            <div class="flex justify-between h-full items-center">
+                <div class="font-bold text-xl tracking-tight text-gray-900 flex items-center gap-2">
+                    <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full uppercase">Report</span>
+                    Google AI Solutions
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <!-- Nav Tabs -->
+                    <div class="hidden md:flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                        <button onclick="switchTab('overview')" id="nav-overview" class="px-4 py-2 text-sm font-medium rounded-md text-gray-900 bg-white shadow-sm transition-all">核心差異</button>
+                        <button onclick="switchTab('analysis')" id="nav-analysis" class="px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:text-gray-900 transition-all">深度分析</button>
+                        <button onclick="switchTab('decision')" id="nav-decision" class="px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:text-gray-900 transition-all">決策幫手</button>
+                        <button onclick="switchTab('roadmap')" id="nav-roadmap" class="px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:text-gray-900 transition-all">導入策略</button>
+                    </div>
+
+                    <!-- API Key Input -->
+                    <div class="relative group">
+                        <!-- <input type="password" id="apiKeyInput" placeholder="Enter Gemini API Key" class="border border-gray-300 rounded-full px-3 py-1 text-xs w-32 focus:w-64 transition-all outline-none focus:border-blue-500 bg-gray-50"> -->
+                        <div class="absolute right-0 top-8 bg-black text-white text-xs p-2 rounded hidden group-hover:block w-48 z-50 opacity-90">
+                            輸入 API Key 以啟用 AI 顧問功能。<br>Key 僅存於本地瀏覽器。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="w-full max-w-7xl mx-auto">
+
+        <!-- 1. OVERVIEW PAGE -->
+        <div id="view-overview" class="page-section active p-6 md:p-12">
+            <div class="max-w-5xl mx-auto text-center mb-10">
+                <h1 class="text-3xl md:text-5xl font-bold text-gray-900 mb-6 tracking-tight">Google AI 知識管理解決方案</h1>
+                <p class="text-xl text-gray-600">NotebookLM vs. Gemini API vs. Vertex AI</p>
+                <p class="mt-4 text-gray-500">選擇關鍵在於「開發自由度」與「維護成本」的權衡。</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                <div class="bg-white rounded-2xl p-8 border border-gray-200 hover:border-nbGreen hover:shadow-lg transition-all group">
+                    <div class="flex justify-between items-start mb-6">
+                        <span class="text-4xl group-hover:scale-110 transition-transform">🚙</span>
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded-full">SaaS 產品</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-nbGreen mb-2">NotebookLM</h3>
+                    <p class="font-semibold text-gray-700 mb-4">即開即用的「車輛」</p>
+                    <p class="text-gray-600 leading-relaxed text-sm">無需任何開發，上傳文件即可開始對話。適合個人研究、小型專案團隊，零技術門檻。</p>
+                </div>
+
+                <div class="bg-white rounded-2xl p-8 border border-gray-200 hover:border-geminiBlue hover:shadow-lg transition-all group">
+                    <div class="flex justify-between items-start mb-6">
+                        <span class="text-4xl group-hover:scale-110 transition-transform">⚙️</span>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">基礎設施</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-geminiBlue mb-2">Gemini API</h3>
+                    <p class="font-semibold text-gray-700 mb-4">客製化的「引擎」</p>
+                    <p class="text-gray-600 leading-relaxed text-sm">為開發者設計的全託管 RAG 服務。解決了檢索複雜度，可嵌入現有系統，適合中型應用開發。</p>
+                </div>
+
+                <div class="bg-white rounded-2xl p-8 border border-gray-200 hover:border-vertexPurple hover:shadow-lg transition-all group">
+                    <div class="flex justify-between items-start mb-6">
+                        <span class="text-4xl group-hover:scale-110 transition-transform">🏢</span>
+                        <span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded-full">企業平台</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-vertexPurple mb-2">Vertex AI</h3>
+                    <p class="font-semibold text-gray-700 mb-4">管理的「車隊」</p>
+                    <p class="text-gray-600 leading-relaxed text-sm">企業級 AI 平台。具備權限控管、資料落地、合規性與大規模整合能力，適合大型組織。</p>
+                </div>
+            </div>
+            
+            <div class="text-center mt-12">
+                <button onclick="switchTab('analysis')" class="bg-gray-900 text-white px-8 py-3 rounded-full hover:bg-gray-800 transition-colors shadow-lg font-medium">
+                    進入深度分析 &rarr;
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. ANALYSIS PAGE -->
+        <div id="view-analysis" class="page-section p-6 md:p-10">
+            <div class="max-w-6xl mx-auto h-full flex flex-col">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900">能力維度與規格分析</h2>
+                    <p class="text-gray-600">點選左側項目查看詳細規格差異</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-grow items-stretch">
+                    <!-- LEFT: Accordion -->
+                    <div class="lg:col-span-5 space-y-4 flex flex-col">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <button onclick="toggleDetail('scale')" class="w-full text-left px-6 py-4 bg-gray-50 hover:bg-white border-b border-gray-100 flex justify-between items-center transition-colors">
+                                <span class="font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-database w-5"></i> 資料規模</span>
+                                <span id="icon-scale" class="text-gray-400 text-xl">+</span>
+                            </button>
+                            <div id="detail-scale" class="hidden px-6 py-4 bg-white text-sm space-y-3 border-b border-gray-100">
+                                <div class="flex items-start gap-3"><span class="text-nbGreen font-bold min-w-[80px]">NotebookLM</span><span class="text-gray-600">單一筆記本限 50 個來源，單檔 50 萬字。</span></div>
+                                <div class="flex items-start gap-3"><span class="text-geminiBlue font-bold min-w-[80px]">Gemini API</span><span class="text-gray-600">Store 可容納數 TB，動態檢索無硬性上限。</span></div>
+                                <div class="flex items-start gap-3"><span class="text-vertexPurple font-bold min-w-[80px]">Vertex AI</span><span class="text-gray-600">PB 等級儲存，支援混合檢索。</span></div>
+                            </div>
+
+                            <button onclick="toggleDetail('integration')" class="w-full text-left px-6 py-4 bg-gray-50 hover:bg-white border-b border-gray-100 flex justify-between items-center transition-colors">
+                                <span class="font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-plug w-5"></i> 系統整合</span>
+                                <span id="icon-integration" class="text-gray-400 text-xl">+</span>
+                            </button>
+                            <div id="detail-integration" class="hidden px-6 py-4 bg-white text-sm space-y-3 border-b border-gray-100">
+                                <div class="flex items-start gap-3"><span class="text-nbGreen font-bold min-w-[80px]">NotebookLM</span><span class="text-gray-600 text-red-500">無 API，僅限網頁操作。</span></div>
+                                <div class="flex items-start gap-3"><span class="text-geminiBlue font-bold min-w-[80px]">Gemini API</span><span class="text-gray-600">REST API / SDK，可嵌入 App 或 Bot。</span></div>
+                                <div class="flex items-start gap-3"><span class="text-vertexPurple font-bold min-w-[80px]">Vertex AI</span><span class="text-gray-600">內建 Jira, Salesforce 等企業連接器。</span></div>
+                            </div>
+
+                            <button onclick="toggleDetail('security')" class="w-full text-left px-6 py-4 bg-gray-50 hover:bg-white border-b border-gray-100 flex justify-between items-center transition-colors">
+                                <span class="font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-shield-alt w-5"></i> 資安與合規</span>
+                                <span id="icon-security" class="text-gray-400 text-xl">+</span>
+                            </button>
+                            <div id="detail-security" class="hidden px-6 py-4 bg-white text-sm space-y-3">
+                                <div class="flex items-start gap-3"><span class="text-nbGreen font-bold min-w-[80px]">NotebookLM</span><span class="text-gray-600">Workspace 標準防護。</span></div>
+                                <div class="flex items-start gap-3"><span class="text-geminiBlue font-bold min-w-[80px]">Gemini API</span><span class="text-gray-600">Google Cloud 標準資安，資料不落地。</span></div>
+                                <div class="flex items-start gap-3"><span class="text-vertexPurple font-bold min-w-[80px]">Vertex AI</span><span class="text-gray-600">最高等級 (VPC-SC, HIPAA, SOC2)。</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Radar Chart -->
+                    <div class="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-center items-center h-auto self-start min-h-[535px]">
+                         <div class="chart-container w-full h-full relative">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. DECISION PAGE -->
+        <div id="view-decision" class="page-section p-6">
+            <div class="max-w-6xl mx-auto flex flex-col">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">智慧場景推薦</h2>
+                    <p class="text-gray-600 text-sm">請設定左側條件，系統將根據權重分析最適合的方案。</p>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-8">
+                    <!-- LEFT: 6-Factor Control Panel -->
+                    <div class="w-full md:w-1/2 flex flex-col gap-6">
+                        <!-- Group 1 -->
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <i class="fas fa-users text-blue-500"></i> 團隊與資源
+                            </h3>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">工程能力</label>
+                                    <div class="space-y-2">
+                                        <button class="choice-btn w-full" onclick="setDecision('dev', 'no', '無專職工程師', this)">無專職工程師</button>
+                                        <button class="choice-btn w-full" onclick="setDecision('dev', 'yes', '有開發團隊', this)">有開發團隊</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">人員規模</label>
+                                    <div class="space-y-2">
+                                        <button class="choice-btn w-full" onclick="setDecision('size', 'small', '小組 (<20人)', this)">小組 (<20人)</button>
+                                        <button class="choice-btn w-full" onclick="setDecision('size', 'large', '大型 (>50人)', this)">大型 (>50人)</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group 2 -->
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <i class="fas fa-database text-green-500"></i> 資料特性
+                            </h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">資料更新</label>
+                                    <div class="space-y-2">
+                                        <button class="choice-btn w-full" onclick="setDecision('update', 'static', '靜態文件', this)">靜態文件</button>
+                                        <button class="choice-btn w-full" onclick="setDecision('update', 'dynamic', '即時動態', this)">即時動態</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">資料量級</label>
+                                    <div class="space-y-2">
+                                        <button class="choice-btn w-full" onclick="setDecision('volume', 'low', '少量 (百份)', this)">少量 (百份)</button>
+                                        <button class="choice-btn w-full" onclick="setDecision('volume', 'high', '海量 (萬份)', this)">海量 (萬份)</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group 3 -->
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <i class="fas fa-bullseye text-purple-500"></i> 使用對象
+                            </h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">受眾範圍</label>
+                                    <div class="space-y-2">
+                                        <button class="choice-btn w-full" onclick="setDecision('audience', 'internal', '內部特定小組', this)">內部特定小組</button>
+                                        <button class="choice-btn w-full" onclick="setDecision('audience', 'external', '全公司/外部', this)">全公司/外部</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">資安合規</label>
+                                    <div class="space-y-2">
+                                        <button class="choice-btn w-full" onclick="setDecision('security', 'std', '標準防護', this)">標準防護</button>
+                                        <button class="choice-btn w-full" onclick="setDecision('security', 'strict', '嚴格合規', this)">嚴格合規</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Dynamic Result Card -->
+                    <div class="w-full md:w-1/2 flex flex-col">
+                        <!-- Placeholder -->
+                        <div id="result-placeholder" class="h-full border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center text-gray-400 bg-gray-50 p-8 text-center">
+                            <div>
+                                <i class="fas fa-calculator text-4xl mb-4 opacity-30"></i>
+                                <p>請完成左側選項<br>系統將自動計算最佳推薦</p>
+                            </div>
+                        </div>
+
+                        <!-- Main Result Card -->
+                        <div id="result-card" class="hidden flex-col bg-white rounded-xl shadow-lg border-t-8 p-6 transition-all duration-500 relative">
+                            <!-- Basic Result -->
+                            <div class="mb-6">
+                                <div class="flex justify-between items-start mb-4">
+                                    <!-- <span id="res-score" class="text-xs text-gray-400 font-mono">Match Score: 95%</span> -->
+                                    <span id="res-score" class="text-xs text-gray-400 font-mono"></span>
+                                    <span id="res-tag" class="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide bg-gray-100 text-gray-600">推薦方案</span>
+                                </div>
+                                <h3 id="res-title" class="text-4xl font-bold mb-4"></h3>
+                                <p id="res-desc" class="text-gray-600 text-lg leading-relaxed mb-6"></p>
+                                
+                                <div class="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                                    <h4 class="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wide">為什麼適合您？</h4>
+                                    <ul id="res-reasons" class="text-sm text-gray-600 space-y-2 list-disc pl-4"></ul>
+                                </div>
+                            </div>
+
+                            <!-- Gemini AI Button -->
+                            <div class="mt-auto pt-4 border-t border-gray-100">
+                                <!-- <button onclick="askGemini()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
+                                    <i class="fas fa-sparkles"></i>
+                                    <span>請 Gemini 生成客製化導入報告</span>
+                                </button>
+                                <p class="text-xs text-center text-gray-400 mt-2">需於上方導覽列輸入 API Key</p> -->
+                            </div>
+
+                            <!-- Gemini Response Area (Initially Hidden) -->
+                            <div id="gemini-response-area" class="hidden mt-6 bg-blue-50/50 rounded-xl p-6 border border-blue-100">
+                                <!-- <div class="flex items-center gap-2 mb-4">
+                                    <i class="fas fa-robot text-blue-500"></i>
+                                    <h4 class="font-bold text-blue-800">Gemini AI 顧問分析</h4>
+                                </div> -->
+                                <div id="gemini-content" class="prose prose-sm max-w-none text-gray-700"></div>
+                                <!-- <div id="gemini-loading" class="hidden py-4 text-center">
+                                    <div class="typing-indicator">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-2">AI 正在撰寫您的報告...</p>
+                                </div> -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. ROADMAP PAGE (Scenario Based) -->
+        <div id="view-roadmap" class="page-section p-6 md:p-10">
+             <div class="max-w-7xl mx-auto h-full flex flex-col">
+                <div class="text-center mb-6 flex-none">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">導入策略指引</h2>
+                    <p class="text-gray-600">依據不同的應用場景與發展階段，採取適合的技術路徑。</p>
+                </div>
+
+                <!-- Scenario Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow items-start pb-4">
+                    
+                    <!-- Scenario 1 -->
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition-shadow relative overflow-hidden h-full">
+                        <div class="absolute top-0 left-0 w-full h-2 bg-nbGreen"></div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-1 mt-2">階段一：概念驗證 (POC)</h3>
+                        <p class="text-xs text-gray-500 mb-4 font-mono">適用情境：需求探索 / 快速測試</p>
+                        
+                        <div class="bg-emerald-50 rounded-lg p-3 mb-4 border border-emerald-100">
+                            <strong class="text-nbGreen block mb-1 text-sm">何時採用 NotebookLM？</strong>
+                            <p class="text-xs text-gray-600 leading-relaxed">
+                                當您需要立即驗證「這份文件能否被 AI 理解」或「這類問題 AI 能否回答」時。
+                            </p>
+                        </div>
+                         <ul class="list-disc pl-5 space-y-2 text-gray-600 text-xs flex-grow">
+                            <li>無工程資源介入，由 PM/User 直接操作。</li>
+                            <li>確認知識庫品質與邊界。</li>
+                            <li>建立團隊對 AI 輔助的信心。</li>
+                        </ul>
+                    </div>
+
+                    <!-- Scenario 2 -->
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition-shadow relative overflow-hidden h-full">
+                        <div class="absolute top-0 left-0 w-full h-2 bg-geminiBlue"></div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-1 mt-2">階段二：應用整合 (MVP)</h3>
+                         <p class="text-xs text-gray-500 mb-4 font-mono">適用情境：流程自動化 / 嵌入現有系統</p>
+                        
+                        <div class="bg-blue-50 rounded-lg p-3 mb-4 border border-blue-100">
+                            <strong class="text-geminiBlue block mb-1 text-sm">何時採用 Gemini API？</strong>
+                            <p class="text-xs text-gray-600 leading-relaxed">
+                                當需要將 AI 搜尋能力整合進 Slack Bot、公司網站或現有 App，且需要自動同步文件時。
+                            </p>
+                        </div>
+                        <ul class="list-disc pl-5 space-y-2 text-gray-600 text-xs flex-grow">
+                            <li>開發專屬的前端互動介面。</li>
+                            <li>透過 API 批量處理大量文件。</li>
+                            <li>建立 Data Pipeline 自動更新知識庫。</li>
+                        </ul>
+                    </div>
+
+                    <!-- Scenario 3 -->
+                    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition-shadow relative overflow-hidden h-full">
+                        <div class="absolute top-0 left-0 w-full h-2 bg-vertexPurple"></div>
+                        <h3 class="text-lg font-bold text-gray-900 mb-1 mt-2">階段三：規模化運營</h3>
+                         <p class="text-xs text-gray-500 mb-4 font-mono">適用情境：全企業部署 / 高度合規</p>
+                        
+                        <div class="bg-purple-50 rounded-lg p-3 mb-4 border border-purple-100">
+                            <strong class="text-vertexPurple block mb-1 text-sm">何時採用 Vertex AI？</strong>
+                            <p class="text-xs text-gray-600 leading-relaxed">
+                                當涉及跨部門權限管理、敏感個資處理，或需要混合搜尋 (Hybrid Search) 提升精準度時。
+                            </p>
+                        </div>
+                        <ul class="list-disc pl-5 space-y-2 text-gray-600 text-xs flex-grow">
+                            <li>統一管理多個搜尋應用 (Search Apps)。</li>
+                            <li>實施 RBAC 細緻權限控管與稽核。</li>
+                            <li>開箱即用連接 Salesforce/Jira 等資料源。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Mixed Strategy Hint -->
+                 <div class="bg-gray-100 rounded-xl p-4 border border-gray-200 flex items-start gap-3 mt-auto">
+                    <div class="bg-white p-2 rounded-full shadow-sm text-lg">💡</div>
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-sm mb-1">保持彈性的混合策略 (Hybrid Strategy)</h4>
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            <strong>三者並非互斥，而是互補。</strong> 企業可以讓行銷部門使用 NotebookLM 快速分析競品報告（靈活、快速），同時由 IT 部門使用 Gemini API 構建全公司的規章查詢系統（穩定、自動化）。保持工具選擇的彈性，才能達到最佳的知識管理效率。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        // --- Navigation ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.page-section').forEach(el => {
+                el.classList.remove('active');
+                setTimeout(() => { if(!el.classList.contains('active')) el.style.display = 'none'; }, 300); 
+            });
+            const selected = document.getElementById(`view-${tabId}`);
+            selected.style.display = 'block';
+            setTimeout(() => { selected.classList.add('active'); }, 10);
+
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.classList.remove('bg-white', 'shadow-sm', 'text-gray-900');
+                btn.classList.add('text-gray-500', 'hover:text-gray-900');
+            });
+            document.getElementById(`nav-${tabId}`).classList.add('bg-white', 'shadow-sm', 'text-gray-900');
+            document.getElementById(`nav-${tabId}`).classList.remove('text-gray-500');
+
+            if (tabId === 'analysis') renderChart();
+        }
+
+        // --- Analysis: Details ---
+        function toggleDetail(id) {
+            const content = document.getElementById(`detail-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.innerText = '-';
+            } else {
+                content.classList.add('hidden');
+                icon.innerText = '+';
+            }
+        }
+
+        // --- Analysis: Chart ---
+        let radarChart = null;
+        function renderChart() {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            if (radarChart) radarChart.destroy();
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['部署速度', '易用性', '資料規模', '系統整合', '維護自動化'],
+                    datasets: [{
+                        label: 'NotebookLM', data: [10, 10, 3, 1, 2],
+                        fill: true, backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: '#10B981', pointBackgroundColor: '#10B981'
+                    }, {
+                        label: 'Gemini API', data: [5, 5, 8, 9, 8],
+                        fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: '#3B82F6', pointBackgroundColor: '#3B82F6'
+                    }, {
+                        label: 'Vertex AI', data: [2, 3, 10, 10, 10],
+                        fill: true, backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: '#8B5CF6', pointBackgroundColor: '#8B5CF6'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { r: { angleLines: { color: '#E5E7EB' }, grid: { color: '#E5E7EB' }, ticks: { display: false, max: 10 }, pointLabels: { font: { size: 12 }, color: '#4B5563' } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // --- Decision Helper Logic ---
+        const userChoices = { dev: null, size: null, update: null, volume: null, audience: null, security: null };
+        const userChoicesLabels = { dev: '', size: '', update: '', volume: '', audience: '', security: '' };
+        let currentWinner = '';
+
+        function setDecision(key, value, label, btnElement) {
+            userChoices[key] = value;
+            userChoicesLabels[key] = label;
+            const parent = btnElement.parentElement;
+            parent.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+            btnElement.classList.add('selected');
+            calculateRecommendation();
+        }
+
+        function calculateRecommendation() {
+            if (!userChoices.dev) return; 
+            const placeholder = document.getElementById('result-placeholder');
+            const resultCard = document.getElementById('result-card');
+            placeholder.classList.add('hidden');
+            resultCard.classList.remove('hidden');
+            resultCard.classList.add('flex');
+            document.getElementById('gemini-response-area').classList.add('hidden');
+            document.getElementById('gemini-content').innerHTML = '';
+
+            let scores = { nb: 0, gemini: 0, vertex: 0 };
+            if (userChoices.dev === 'no') { scores.nb += 10; } else { scores.gemini += 2; scores.vertex += 2; }
+            if (userChoices.size === 'small') scores.nb += 2;
+            if (userChoices.size === 'large') scores.vertex += 3;
+            if (userChoices.update === 'static') scores.nb += 3;
+            if (userChoices.update === 'dynamic') { scores.gemini += 3; scores.vertex += 1; }
+            if (userChoices.volume === 'high') { scores.gemini += 2; scores.vertex += 3; }
+            if (userChoices.audience === 'internal') { scores.nb += 2; scores.gemini += 1; }
+            if (userChoices.audience === 'external') { scores.gemini += 3; scores.vertex += 2; }
+            if (userChoices.security === 'strict') scores.vertex += 10;
+
+            let winner = 'gemini';
+            let maxScore = scores.gemini;
+            if (userChoices.dev === 'no') winner = 'nb'; 
+            else if (userChoices.security === 'strict') winner = 'vertex'; 
+            else {
+                if (scores.nb > maxScore) { winner = 'nb'; maxScore = scores.nb; }
+                if (scores.vertex > maxScore) { winner = 'vertex'; maxScore = scores.vertex; }
+            }
+            currentWinner = winner;
+            renderResult(winner);
+        }
+
+        function renderResult(winner) {
+            const ui = {
+                title: document.getElementById('res-title'),
+                desc: document.getElementById('res-desc'),
+                tag: document.getElementById('res-tag'),
+                reasons: document.getElementById('res-reasons'),
+                card: document.getElementById('result-card')
+            };
+            ui.card.className = "flex flex-col h-full bg-white rounded-xl shadow-lg border-t-8 p-6 transition-all fade-in overflow-y-auto relative";
+            if (winner === 'nb') {
+                ui.card.classList.add('border-nbGreen');
+                ui.title.innerText = "NotebookLM";
+                ui.title.className = "text-3xl font-bold mt-2 text-nbGreen";
+                ui.tag.className = "text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide bg-emerald-100 text-emerald-800";
+                ui.desc.innerText = "最適合您的輕量級方案。無需等待開發，立即能將文件轉化為知識庫，特別適合靜態資料與內部小組使用。";
+                ui.reasons.innerHTML = `<li><strong>零開發門檻：</strong>團隊無需工程資源即可操作。</li><li><strong>快速部署：</strong>幾分鐘內即可上線使用。</li><li><strong>成本效益：</strong>目前免費，適合概念驗證。</li>`;
+            } else if (winner === 'gemini') {
+                ui.card.classList.add('border-geminiBlue');
+                ui.title.innerText = "Gemini API";
+                ui.title.className = "text-3xl font-bold mt-2 text-geminiBlue";
+                ui.tag.className = "text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide bg-blue-100 text-blue-800";
+                ui.desc.innerText = "最佳性價比的客製化方案。利用 Google 基礎設施快速構建應用，適合需要動態資料更新與整合現有系統的團隊。";
+                ui.reasons.innerHTML = `<li><strong>高度整合：</strong>可透過 API 嵌入任何應用。</li><li><strong>自動化：</strong>支援程式化更新資料。</li><li><strong>靈活彈性：</strong>按用量計費，擴充性強。</li>`;
+            } else {
+                ui.card.classList.add('border-vertexPurple');
+                ui.title.innerText = "Vertex AI";
+                ui.title.className = "text-3xl font-bold mt-2 text-vertexPurple";
+                ui.tag.className = "text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide bg-purple-100 text-purple-800";
+                ui.desc.innerText = "企業級規模與合規的首選。當涉及嚴格資安要求、海量資料或需要開箱即用的企業連接器時，這是唯一解。";
+                ui.reasons.innerHTML = `<li><strong>企業合規：</strong>符合 HIPAA, SOC2 等嚴格標準。</li><li><strong>資料落地：</strong>確保資料不被用於模型訓練。</li><li><strong>完整平台：</strong>提供 MLOps 與混合搜尋能力。</li>`;
+            }
+        }
+
+        // --- Gemini Integration ---
+        async function askGemini() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            // if (!apiKey) { alert("請先在右上角輸入 Gemini API Key"); return; }
+            const responseArea = document.getElementById('gemini-response-area');
+            const loading = document.getElementById('gemini-loading');
+            const content = document.getElementById('gemini-content');
+            responseArea.classList.remove('hidden');
+            loading.classList.remove('hidden');
+            content.innerHTML = '';
+            const resultCard = document.getElementById('result-card');
+            setTimeout(() => { resultCard.scrollTop = resultCard.scrollHeight; }, 100);
+
+            let winnerText = "";
+            if (currentWinner === 'nb') winnerText = "NotebookLM";
+            if (currentWinner === 'gemini') winnerText = "Gemini API File Search";
+            if (currentWinner === 'vertex') winnerText = "Vertex AI Agent Builder";
+
+            const userContext = `
+            使用者情境如下：
+            1. 工程能力：${userChoicesLabels.dev || '未填'}
+            2. 團隊規模：${userChoicesLabels.size || '未填'}
+            3. 資料更新頻率：${userChoicesLabels.update || '未填'}
+            4. 資料量級：${userChoicesLabels.volume || '未填'}
+            5. 受眾範圍：${userChoicesLabels.audience || '未填'}
+            6. 資安要求：${userChoicesLabels.security || '未填'}
+            
+            系統推薦方案：${winnerText}
+            `;
+
+            const prompt = `
+            你是一位專業的 Google AI 解決方案架構師。
+            ${userContext}
+            請根據上述使用者情境與推薦方案，生成一份「客製化導入建議報告」。
+            請使用繁體中文 (Traditional Chinese)。
+            報告結構應包含：
+            1. **高層次摘要 (Executive Summary)**：一句話告訴使用者為什麼這個選擇適合他。
+            2. **關鍵效益 (Key Benefits)**：針對他的情境，列出 3 點具體好處。
+            3. **潛在風險與注意事項 (Risks & Watchouts)**：溫馨提醒該方案的限制。
+            4. **下一步行動 (Action Plan)**：3 個具體的執行步驟。
+            請使用 Markdown 格式輸出，保持專業、鼓勵且具體的語氣。
+            `;
+
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await response.json();
+                if (data.error) { throw new Error(data.error.message); }
+                const text = data.candidates[0].content.parts[0].text;
+                loading.classList.add('hidden');
+                content.innerHTML = marked.parse(text);
+                resultCard.scrollTop = resultCard.scrollHeight;
+            } catch (error) {
+                loading.classList.add('hidden');
+                content.innerHTML = `<p class="text-red-500">發生錯誤：${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

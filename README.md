@@ -38,7 +38,8 @@ knowledge-base/
 
 如果想在本地預覽，可以安裝 Jekyll 並執行：
 
-```bash
+```shell
+#!/bin/bash
 gem install bundler
 bundle install
 bundle exec jekyll serve
