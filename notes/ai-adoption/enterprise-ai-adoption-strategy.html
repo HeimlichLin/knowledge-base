@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業 AI 導入策略規劃：從個人賦能到供應鏈優化</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background-color: #f0f4f8; }
+        .slide-enter { opacity: 0; transform: translateY(10px); }
+        .slide-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms, transform 300ms; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Data Structure based on the provided text
+        const slidesData = [
+            {
+                id: "intro",
+                title: "專案背景：電腦品牌廠的 AI 轉型契機",
+                type: "overview",
+                content: {
+                    context: [
+                        "產業特性：零組件價格波動劇烈、產品生命週期短、長鞭效應顯著。",
+                        "IT 定位：處於技術與業務的交界，擁有數據（DB）並理解邏輯（採購流程）。"
+                    ],
+                    painPoints: [
+                        { title: "非結構化數據處理", desc: "大量 Email 報價單、PDF 合約、供應商公告需人工處理。" },
+                        { title: "依賴經驗法則", desc: "庫存預估缺乏數據模型，依賴 Excel 與人腦經驗。" },
+                        { title: "IT 維運負擔", desc: "需花費大量時間撰寫臨時報表 SQL，或維護老舊 ERP 邏輯。" }
+                    ],
+                    goals: [
+                        { type: "短期 (Quick Wins)", desc: "利用工具減少重複性工作，解決繁瑣資料處理。" },
+                        { type: "中長期 (Strategy)", desc: "建立預測模型輔助決策，提升供應鏈韌性。" }
+                    ]
+                }
+            },
+            {
+                id: "roles",
+                title: "角色職能：AI 在各崗位的具體應用",
+                type: "roles",
+                roles: [
+                    {
+                        role: "PM & SA (需求分析)",
+                        tasks: [
+                            { action: "模糊需求轉 Spec", detail: "將 User 雜亂描述轉化為結構化 User Story 與 Schema。", tool: "Claude Opus 4.5" },
+                            { action: "生成流程圖", detail: "文字描述業務邏輯，自動生成 Mermaid.js 流程圖代碼。", tool: "ChatGPT, Gemini" },
+                            { action: "手繪草圖轉 UI", detail: "拍照上傳手繪介面草圖，自動生成 HTML/CSS 代碼。", tool: "ChatGPT, Gemini" }
+                        ]
+                    },
+                    {
+                        role: "PG & DevOps (開發維運)",
+                        tasks: [
+                            { action: "遺留代碼重構", detail: "解釋老舊 Stored Procedure 或 VBA，並協助轉寫為 Java/Python。", tool: "GitHub Copilot" },
+                            { action: "單元測試生成", detail: "自動生成 JUnit/PyTest 測試案例與 Mock Data。", tool: "GitHub Copilot" },
+                            { action: "DB 效能調優", detail: "分析 SQL Execution Plan，提供 Index 建立建議。", tool: "LLM + DB Logs" }
+                        ]
+                    },
+                    {
+                        role: "採購 & 供應鏈 (業務端)",
+                        tasks: [
+                            { action: "詢價單比對", detail: "自動擷取非結構化報價單內容至 Excel/DB。", tool: "Python + LLM API" },
+                            { action: "合約風險審查", detail: "紅線標記不利條款，比對標準合約範本。", tool: "RAG, Claude Opus 4.5" },
+                            { action: "市場情資摘要", detail: "每週自動彙整關鍵零組件市場新聞與趨勢。", tool: "Perplexity, Gemini" }
+                        ]
+                    },
+                    {
+                        role: "FAE & 客服 (知識管理)",
+                        tasks: [
+                            { action: "自助知識庫", detail: "上傳維修手冊與 Spec，提供自然語言問答。", tool: "Google NotebookLM" },
+                            { action: "新人 Onboarding", detail: "利用 AI 回答開發規範與環境設定問題。", tool: "Google NotebookLM" }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "roadmap",
+                title: "導入路線圖：由小到大的循序漸進策略",
+                type: "roadmap",
+                phases: [
+                    {
+                        level: "Level 1: 個人與小團隊 (Quick Wins)",
+                        difficulty: "低",
+                        focus: "個人生產力與資料正規化",
+                        items: [
+                            { title: "Web Scraping 自動化", desc: "自動抓取市場報價網站資料，填入內部系統 (取代人工複製)。", tools: "Google Apps Script, Python" },
+                            { title: "合約語義檢索 (RAG)", desc: "建立內部知識庫，讓採購用自然語言查詢合約條款與規範。", tools: "NotebookLM (SaaS), Vector DB" },
+                            { title: "規則型自動化", desc: "利用 Python/VBA 處理固定邏輯的資料清洗與轉檔。", tools: "Python Pandas" }
+                        ]
+                    },
+                    {
+                        level: "Level 2: 流程自動化與輔助 (Process)",
+                        difficulty: "中 (需整合)",
+                        focus: "系統整合與異常偵測",
+                        items: [
+                            { title: "RFQ 自動化 (NER)", desc: "利用 LLM 識別 Email/PDF 報價單，轉為標準 CSV (需考量無 API 時的 Local LLM 架設)。", tools: "Local LLM / OpenAI API" },
+                            { title: "採購異常偵測", desc: "針對 PO 單價與數量建立模型，偵測偏離常態的採購行為。", tools: "Isolation Forest (ML)" },
+                            { title: "Text-to-SQL 助手", desc: "輸入自然語言生成 SQL Query，加速 IT 回應臨時報表需求。", tools: "Prompt Engineering" }
+                        ]
+                    },
+                    {
+                        level: "Level 3: 全公司戰略預測 (Strategy)",
+                        difficulty: "高 (需大量數據)",
+                        focus: "決策優化與模擬",
+                        items: [
+                            { title: "需求預測 (Demand Forecasting)", desc: "整合 Sell-out、通路庫存與總經指標，預測 SKU 級別需求。", tools: "LSTM, XGBoost" },
+                            { title: "供應鏈數位分身 (Digital Twin)", desc: "模擬供應鏈參數（如海運延誤），建議最佳調度策略。", tools: "Reinforcement Learning" },
+                            { title: "供應鏈風險雷達", desc: "監控新聞與地緣政治，自動關聯至 BOM 表庫存風險。", tools: "NewsAPI, Entity Linking" }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "notebooklm",
+                title: "NotebookLM 的應用",
+                type: "feature",
+                desc: "針對供應鏈與 IT 維運中大量的「文檔知識」場景，Google NotebookLM 是最快落地且無需開發的解決方案。",
+                cases: [
+                    {
+                        title: "供應商 ESG 審查",
+                        scenario: "比對 5 家供應商的 ESG 報告。",
+                        prompt: "「比較這 5 家供應商在減碳目標上的承諾差異？誰有明確列出 2030 年數據？」"
+                    },
+                    {
+                        title: "遺留系統知識救援",
+                        scenario: "針對散亂的舊系統 Word/Email 文件。",
+                        prompt: "「根據這些文件，請購單核決邏輯是寫在 DB 還是 Java Code 裡？」"
+                    },
+                    {
+                        title: "市場研報消化",
+                        scenario: "快速閱讀多份長篇市場分析報告 (IDC/Gartner)。",
+                        prompt: "「綜合報告，對於明年 Q1 Server DDR5 的價格趨勢預測是否有共識？」"
+                    }
+                ]
+            },
+            {
+                id: "steps",
+                title: "執行步驟：如何開始？",
+                type: "steps",
+                steps: [
+                    { step: "Phase 1: 數據盤點 (IT)", action: "檢查 DB 品質，確認採購數據的完整性 (Garbage In, Garbage Out)。", priority: "高" },
+                    { step: "Phase 2: 採購小助手 (POC)", action: "選擇一個痛點 (如 Email 報價單)，開發 Python 腳本自動化，建立信任。", priority: "高" },
+                    { step: "Phase 3: 建立預測模型", action: "選取關鍵零組件 (如 SSD)，嘗試使用 Prophet/Scikit-learn 跑價格趨勢。", priority: "中" },
+                    { step: "Phase 4: 擴大應用", action: "導入 RAG 知識庫與異常偵測系統，整合至 ERP/SCM 流程。", priority: "低" }
+                ]
+            },
+            {
+                id: "advanced",
+                title: "進階應用與技術棧建議",
+                type: "advanced",
+                sections: [
+                    {
+                        title: "DevOps 自動化與遷移",
+                        items: [
+                            { title: "VBA to Java 遷移", desc: "利用 AI 逆向工程 VBA 邏輯，產出 Pseudo Code 再轉寫為 Java。" },
+                            { title: "仿真測試數據 (Synthetic Data)", desc: "生成具備業務邏輯 (如交期延遲、異常單價) 的假資料以供測試。" },
+                            { title: "根因分析 (RCA Agent)", desc: "自動分析 Access/DB/GC Log，找出系統異常根本原因。" }
+                        ]
+                    },
+                    {
+                        title: "協作效率提升",
+                        items: [
+                            { title: "會議決策自動追蹤", desc: "語音轉文字後提取 Action Items，自動開立 Jira Ticket。" },
+                            { title: "API 對接與轉換", desc: "上傳供應商 API 文件，自動生成 DTO Class 與整合代碼。" }
+                        ]
+                    },
+                    {
+                        title: "推薦技術棧 (Tech Stack)",
+                        items: [
+                            { title: "LangChain / LangGraph", desc: "處理複雜的「查 DB -> 搜新聞 -> 判斷」多步驟任務。" },
+                            { title: "Google Apps Script", desc: "輕量級自動化，適合串接 Google Sheet 與簡單 API。" },
+                            { title: "Local LLM (Ollama)", desc: "針對機密數據 (BOM/新品)，在內網架設 Llama 3 確保資料不落地。" }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        // Icons
+        const Icons = {
+            Overview: <i data-lucide="layout-dashboard" className="w-5 h-5"></i>,
+            Roadmap: <i data-lucide="milestone" className="w-5 h-5"></i>,
+            Roles: <i data-lucide="users" className="w-5 h-5"></i>,
+            Advanced: <i data-lucide="cpu" className="w-5 h-5"></i>,
+            Feature: <i data-lucide="book-open" className="w-5 h-5"></i>,
+            Steps: <i data-lucide="list-checks" className="w-5 h-5"></i>,
+            Check: <i data-lucide="check-circle" className="w-4 h-4 text-green-500"></i>,
+            ArrowRight: <i data-lucide="arrow-right" className="w-4 h-4"></i>
+        };
+
+        const App = () => {
+            const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+            useEffect(() => {
+                lucide.createIcons();
+            }, [currentSlideIndex]);
+
+            const currentSlide = slidesData[currentSlideIndex];
+
+            const handleNext = () => {
+                if (currentSlideIndex < slidesData.length - 1) setCurrentSlideIndex(prev => prev + 1);
+            };
+
+            const handlePrev = () => {
+                if (currentSlideIndex > 0) setCurrentSlideIndex(prev => prev - 1);
+            };
+
+            const renderContent = () => {
+                switch (currentSlide.type) {
+                    case "overview":
+                        return (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 slide-enter-active">
+                                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                                    <h3 className="text-xl font-bold text-blue-800 mb-4 border-b pb-2">環境與痛點分析</h3>
+                                    <div className="space-y-4">
+                                        <div className="bg-blue-50 p-4 rounded text-sm text-blue-900">
+                                            <strong>核心挑戰：</strong> 電腦品牌廠零組件價格波動大、生命週期短。
+                                        </div>
+                                        <ul className="space-y-3">
+                                            {currentSlide.content.painPoints.map((pt, idx) => (
+                                                <li key={idx} className="bg-gray-50 p-3 rounded border-l-4 border-red-400">
+                                                    <div className="font-semibold text-gray-800 text-sm">{pt.title}</div>
+                                                    <div className="text-gray-600 text-xs mt-1">{pt.desc}</div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-green-800 mb-4 border-b pb-2">目標設定</h3>
+                                        <div className="space-y-4">
+                                            {currentSlide.content.goals.map((g, idx) => (
+                                                <div key={idx} className="bg-green-50 p-3 rounded border-l-4 border-green-400">
+                                                    <div className="font-semibold text-green-900 text-sm">{g.type}</div>
+                                                    <div className="text-gray-600 text-xs mt-1">{g.desc}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="mt-6 bg-gray-50 p-4 rounded text-center">
+                                        <p className="text-gray-500 text-sm mb-2">IT 角色定位</p>
+                                        <div className="font-bold text-gray-800 text-lg">業務邏輯 (Domain Know-how) + 數據 (DB) </div>
+                                        <div className="text-blue-600 text-sm mt-1">連結技術與業務的關鍵節點</div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    case "roadmap":
+                        return (
+                            <div className="space-y-6 slide-enter-active">
+                                {currentSlide.phases.map((phase, idx) => (
+                                    <div key={idx} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                        <div className={`p-3 px-6 font-bold flex justify-between items-center ${
+                                            idx === 0 ? 'bg-blue-100 text-blue-800' : 
+                                            idx === 1 ? 'bg-indigo-100 text-indigo-800' : 'bg-purple-100 text-purple-800'
+                                        }`}>
+                                            <span>{phase.level}</span>
+                                            <span className="text-xs px-2 py-1 bg-white rounded bg-opacity-50">難度: {phase.difficulty}</span>
+                                        </div>
+                                        <div className="p-6">
+                                            <p className="text-gray-600 mb-4 italic">核心重點：{phase.focus}</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                {phase.items.map((item, i) => (
+                                                    <div key={i} className="bg-gray-50 p-4 rounded border-t-2 border-amber-400">
+                                                        <div className="font-bold text-gray-800 text-sm mb-2">{item.title}</div>
+                                                        <p className="text-gray-600 text-xs mb-3">{item.desc}</p>
+                                                        <div className="text-xs bg-white p-2 rounded text-blue-700 border border-blue-200">{item.tools}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    case "roles":
+                        return (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 slide-enter-active">
+                                {currentSlide.roles.map((group, idx) => (
+                                    <div key={idx} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                                        <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
+                                            <div className="bg-blue-100 p-1 rounded text-blue-600"><i data-lucide="user" className="w-4 h-4"></i></div>
+                                            {group.role}
+                                        </h3>
+                                        <ul className="space-y-3">
+                                            {group.tasks.map((task, i) => (
+                                                <li key={i} className="bg-gray-50 p-3 rounded border-l-4 border-indigo-400">
+                                                    <div className="font-semibold text-gray-800 text-sm">{task.action}</div>
+                                                    <div className="text-gray-600 text-xs mt-1">{task.detail}</div>
+                                                    <div className="text-blue-600 text-xs mt-2 italic">🔧 {task.tool}</div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    case "advanced":
+                        return (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 slide-enter-active">
+                                {currentSlide.sections.map((section, idx) => (
+                                    <div key={idx} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                        <div className="bg-slate-800 text-white p-3 font-bold text-center">
+                                            {section.title}
+                                        </div>
+                                        <div className="p-4 space-y-4">
+                                            {section.items.map((item, i) => (
+                                                <div key={i} className="border-b last:border-0 pb-2 last:pb-0">
+                                                    <div className="font-bold text-gray-800 text-sm mb-1">{item.title}</div>
+                                                    <p className="text-gray-600 text-xs">{item.desc}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    case "feature":
+                        return (
+                            <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 slide-enter-active">
+                                <div className="mb-6 text-center max-w-2xl mx-auto">
+                                    <p className="text-lg text-gray-700">{currentSlide.desc}</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {currentSlide.cases.map((c, idx) => (
+                                        <div key={idx} className="bg-orange-50 p-6 rounded-lg border border-orange-100">
+                                            <h4 className="font-bold text-orange-900 mb-3">{c.title}</h4>
+                                            <p className="text-sm text-gray-700 mb-4 min-h-[40px]">{c.scenario}</p>
+                                            <div className="bg-white p-3 rounded text-sm text-gray-600 italic border-l-4 border-orange-400">
+                                                {c.prompt}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-8 bg-gray-100 p-4 rounded text-sm text-gray-600 flex items-start gap-3">
+                                    <i data-lucide="info" className="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+                                    <div>
+                                        <strong>使用限制提醒：</strong> NotebookLM 不會連網更新（只知上傳當下數據）、無法執行程式碼、需注意機密資料（如未上市產品成本結構）的資安政策。
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    case "steps":
+                        return (
+                            <div className="max-w-4xl mx-auto slide-enter-active">
+                                <div className="relative border-l-4 border-blue-200 ml-6 space-y-12 my-8">
+                                    {currentSlide.steps.map((step, idx) => (
+                                        <div key={idx} className="relative pl-8">
+                                            <div className="absolute -left-2.5 top-0 w-5 h-5 bg-blue-500 rounded-full border-4 border-white"></div>
+                                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h4 className="font-bold text-blue-900">{step.step}</h4>
+                                                    <span className={`text-xs px-2 py-1 rounded font-bold ${step.priority === '高' ? 'bg-red-100 text-red-700' : step.priority === '中' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                                                        {step.priority}優先級
+                                                    </span>
+                                                </div>
+                                                <p className="text-gray-700 text-sm">{step.action}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="text-center mt-8">
+                                    <p className="text-gray-600">建議策略：<span className="font-bold text-blue-700">小步快跑，建立信心 (Quick Wins First)</span></p>
+                                </div>
+                            </div>
+                        );
+                    default:
+                        return <div>內容載入中...</div>;
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-screen bg-gray-100 text-gray-900">
+                    {/* Header */}
+                    <header className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center shrink-0">
+                        <div>
+                            <h1 className="text-xl font-bold tracking-wide">AI 導入策略簡報</h1>
+                            <p className="text-xs text-slate-400">針對電腦品牌廠 IT 與供應鏈的整合方案</p>
+                        </div>
+                        <div className="text-sm bg-slate-800 px-3 py-1 rounded">
+                            {currentSlideIndex + 1} / {slidesData.length}
+                        </div>
+                    </header>
+
+                    {/* Main Content Area */}
+                    <main className="flex-1 overflow-auto p-4 md:p-8 flex flex-col items-center">
+                        <div className="w-full max-w-6xl">
+                            <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">{currentSlide.title}</h2>
+                            
+                            {/* Slide Content */}
+                            {renderContent()}
+                        </div>
+                    </main>
+
+                    {/* Footer / Navigation */}
+                    <footer className="bg-white border-t p-4 flex justify-center items-center gap-4 shrink-0 shadow-lg z-10">
+                        <button 
+                            onClick={handlePrev} 
+                            disabled={currentSlideIndex === 0}
+                            className={`px-6 py-2 rounded-full flex items-center gap-2 font-semibold transition-all ${
+                                currentSlideIndex === 0 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                            }`}
+                        >
+                            <i data-lucide="arrow-left" className="w-4 h-4"></i> 上一頁
+                        </button>
+
+                        <div className="flex gap-2 overflow-x-auto px-4">
+                            {slidesData.map((slide, idx) => (
+                                <button
+                                    key={slide.id}
+                                    onClick={() => setCurrentSlideIndex(idx)}
+                                    className={`px-4 py-2 rounded text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${
+                                        currentSlideIndex === idx 
+                                        ? 'bg-blue-600 text-white font-bold shadow-md' 
+                                        : 'hover:bg-gray-100 text-gray-600'
+                                    }`}
+                                >
+                                    {slide.type === 'overview' && Icons.Overview}
+                                    {slide.type === 'roadmap' && Icons.Roadmap}
+                                    {slide.type === 'roles' && Icons.Roles}
+                                    {slide.type === 'advanced' && Icons.Advanced}
+                                    {slide.type === 'feature' && Icons.Feature}
+                                    {slide.type === 'steps' && Icons.Steps}
+                                    <span className="hidden md:inline">{slide.title.split("：")[0]}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <button 
+                            onClick={handleNext} 
+                            disabled={currentSlideIndex === slidesData.length - 1}
+                            className={`px-6 py-2 rounded-full flex items-center gap-2 font-semibold transition-all ${
+                                currentSlideIndex === slidesData.length - 1
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                            }`}
+                        >
+                            下一頁 <i data-lucide="arrow-right" className="w-4 h-4"></i>
+                        </button>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
