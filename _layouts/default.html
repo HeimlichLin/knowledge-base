@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page.title }} | {{ site.title }}</title>
+  <meta name="description" content="{{ site.description }}">
+  
+  <!-- Google Fonts: Rajdhani (Tech) & Inter (Body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+</head>
+<body>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="noise-overlay"></div>
+
+  <div class="app-container">
+    <header class="top-bar">
+      <div class="logo">
+        <i class="fa-solid fa-cube"></i> {{ site.title }}
+      </div>
+      <nav class="top-nav">
+        <span class="nav-item active">DASHBOARD</span>
+        <span class="nav-item" id="sys-time">{{ site.time | date: "%H:%M" }}</span>
+      </nav>
+    </header>
+
+    <main class="main-view">
+      {{ content }}
+    </main>
+  </div>
+
+  <script>
+    function updateTime() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('sys-time').textContent = `${hours}:${minutes}`;
+    }
+    setInterval(updateTime, 1000); // Update every second
+    updateTime(); // Initial call
+  </script>
+</body>
+</html>
