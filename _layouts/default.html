@@ -32,7 +32,7 @@
       </nav>
     </header>
 
-    <main class="main-view">
+    <main class="main-view {% if page.url != '/' %}content-page{% endif %}">
       {{ content }}
     </main>
   </div>

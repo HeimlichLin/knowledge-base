@@ -313,18 +313,83 @@ body {
 }
 
 /* Markdown Content Styling */
-h1, h2, h3 {
+.main-view.content-page {
+  /* Ensure content doesn't span too wide for readability on large screens */
+  max-width: 900px; 
+  margin: 0 auto;
+}
+
+.main-view.content-page > h1, 
+.main-view.content-page > h2, 
+.main-view.content-page > h3,
+.main-view.content-page > h4, 
+.main-view.content-page > h5, 
+.main-view.content-page > h6 {
   color: var(--text-white);
-  margin-bottom: 1rem;
+  margin-top: 2.5rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.3;
+}
+
+.main-view.content-page > h1 {
+  font-size: 2.5rem;
+  margin-top: 1rem; /* Less margin for the first title */
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 1rem;
+}
+
+.main-view.content-page > h2 {
+  font-size: 2rem;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.5rem;
+}
+
+.main-view.content-page > p {
+  margin-bottom: 1.5rem;
+  line-height: 1.8;
+  color: var(--text-gray);
+  font-size: 1.1rem;
+}
+
+.main-view.content-page > ul, 
+.main-view.content-page > ol {
+  margin-bottom: 2rem;
+  padding-left: 2rem;
+}
+
+.main-view.content-page > ul li, 
+.main-view.content-page > ol li {
+  margin-bottom: 0.8rem;
+  line-height: 1.7;
+  color: var(--text-gray);
+  font-size: 1.05rem;
+}
+
+.main-view.content-page > hr {
+  border: 0;
+  border-top: 1px solid var(--glass-border);
+  margin: 3rem 0;
+}
+
+.main-view.content-page > blockquote {
+  border-left: 4px solid var(--accent-blue);
+  padding: 1rem 1.5rem;
+  margin: 2rem 0;
+  background: var(--glass-bg);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-gray);
+  font-style: italic;
 }
 
 a {
   color: var(--accent-blue);
   text-decoration: none;
+  transition: all 0.2s;
 }
 
 a:hover {
   text-decoration: underline;
+  color: var(--accent-purple);
 }
 
 /* ========== Responsive ========== */
