@@ -2,7 +2,7 @@
 
 個人文件知識庫 📚
 
-## 簡介
+## 專案名稱和描述
 
 這個 Repository 專門用來存放個人筆記，所有 HTML 或 Markdown 檔案依照類別放入其中，透過 GitHub Pages 提供線上查看使用。
 
@@ -18,7 +18,10 @@ knowledge-base/
 ├── notes/                # 筆記資料夾
 │   ├── programming/      # 程式設計相關
 │   ├── tools/            # 工具使用相關
+│   ├── ai-adoption/      # AI 採用相關
 │   └── misc/             # 其他筆記
+├── assets/               # 靜態資源
+├── _layouts/             # 佈局檔案
 └── README.md             # 本說明檔
 ```
 
