@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>開發模式轉型比較：傳統 vs AI 協作</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        /* 優化1: 加深背景顏色為 slate-100 (#f1f5f9)，增加與白色卡片的對比度 */
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; }
+        .step-card { transition: all 0.3s ease; }
+        /* 優化2: 滑鼠懸停時增加顯著的陰影與上浮效果，幫助視覺對焦 */
+        .step-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border-color: #94a3b8; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- 內建圖標元件 (Inline Icons) ---
+        const createIcon = (paths) => ({ size = 24, className = "", ...props }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className} 
+                {...props}
+            >
+                {paths}
+            </svg>
+        );
+
+        const IconList = {
+            ArrowRight: createIcon(<><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>),
+            Bot: createIcon(<><rect width="18" height="10" x="3" y="11" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /><line x1="8" x2="8" y1="16" y2="16" /><line x1="16" x2="16" y1="16" y2="16" /></>),
+            Users: createIcon(<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>),
+            FileText: createIcon(<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" x2="8" y1="13" y2="13" /><line x1="16" x2="8" y1="17" y2="17" /><line x1="10" x2="8" y1="9" y2="9" /></>),
+            Database: createIcon(<><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5V19A9 3 0 0 0 21 19V5" /><path d="M3 12A9 3 0 0 0 21 12" /></>),
+            Code: createIcon(<><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>),
+            CheckCircle: createIcon(<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>),
+            Activity: createIcon(<><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></>),
+            GitMerge: createIcon(<><circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M6 21V9a9 9 0 0 0 9 9" /></>),
+            FileJson: createIcon(<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M10 13a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1" /><path d="M14 13a1 1 0 0 1 1 1v1a1 1 0 0 0 1 1 1 1 0 0 0-1 1v1a1 1 0 0 1-1 1" /></>),
+            Cpu: createIcon(<><rect width="16" height="16" x="4" y="4" rx="2" /><rect width="6" height="6" x="9" y="9" rx="1" /><path d="M15 2v2" /><path d="M15 20v2" /><path d="M2 15h2" /><path d="M2 9h2" /><path d="M20 15h2" /><path d="M20 9h2" /><path d="M9 2v2" /><path d="M9 20v2" /></>),
+            ShieldCheck: createIcon(<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path d="m9 12 2 2 4-4" /></>),
+            Zap: createIcon(<><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></>)
+        };
+
+        const { ArrowRight, Bot, Users, FileText, Database, Code, CheckCircle, Activity, GitMerge, FileJson, Cpu, ShieldCheck, Zap } = IconList;
+
+        const roleColors = {
+            "Employee A": { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-200", icon: "text-blue-600", badge: "bg-blue-600" },
+            "Employee B": { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200", icon: "text-emerald-600", badge: "bg-emerald-600" },
+            "Employee C": { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-200", icon: "text-amber-600", badge: "bg-amber-600" },
+            "User": { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-200", icon: "text-gray-600", badge: "bg-gray-600" },
+            "AI": { bg: "bg-violet-100", text: "text-violet-700", border: "border-violet-200", icon: "text-violet-600", badge: "bg-violet-600" }
+        };
+
+        const getRoleColor = (actorString) => {
+            if (actorString.includes("AI") && !actorString.includes("Emp")) return roleColors["AI"];
+            if (actorString.includes("Employee A") || actorString.includes("Emp A")) return roleColors["Employee A"];
+            if (actorString.includes("Employee B") || actorString.includes("Emp B")) return roleColors["Employee B"];
+            if (actorString.includes("Employee C") || actorString.includes("Emp C")) return roleColors["Employee C"];
+            if (actorString.includes("User")) return roleColors["User"];
+            return roleColors["User"];
+        };
+
+        const currentFlow = [
+            { stage: "需求階段", actor: "Employee A", action: "需求訪談", output: "PRD 產品需求文件", icon: Users },
+            { stage: "需求階段", actor: "Employee A", action: "SA 文件初稿撰寫", output: "畫面流程/功能描述", icon: FileText },
+            { stage: "分析階段", actor: "Emp A, B, C", action: "需求討論會 與 技術可行性審查", output: "SRS", icon: GitMerge },
+            { stage: "設計階段", actor: "Emp B, C", action: "SA 文件撰寫", output: "SA 文件", icon: FileText },
+            { stage: "設計階段", actor: "Employee B", action: "SD 文件撰寫", output: "SD 文件", icon: FileText },
+            { stage: "設計階段", actor: "Emp B, C", action: "資料庫設計", output: "Table Schema", icon: Database },
+            { stage: "開發階段", actor: "Employee B", action: "後端開發", output: "Java 程式", icon: Code },
+            { stage: "開發階段", actor: "Employee C", action: "資料庫開發", output: "Oracle SQL", icon: Database },
+            { stage: "測試階段", actor: "Emp B, C", action: "整合測試", output: "測試報告", icon: Activity },
+            { stage: "驗收階段", actor: "Employee A", action: "UAT (內部驗收)", output: "驗收紀錄", icon: ShieldCheck },
+            { stage: "驗收階段", actor: "User", action: "UAT (用戶驗收)", output: "上線許可", icon: CheckCircle },
+        ];
+
+        const futureFlow = [
+            { stage: "需求階段", actor: "Employee A", action: "需求訪談", output: "需求描述 (簡化)", icon: Users, ai: false },
+            { stage: "AI 定義階段", actor: "Emp B + AI", action: "Spec 文件生成", output: "微型規格書 (60% PRD, 30% SA, 10% SD)", icon: FileJson, ai: true },
+            { stage: "確認階段", actor: "Emp A, B", action: "Spec 確認", output: "確認後的規格", icon: CheckCircle, ai: false },
+            { stage: "AI 規劃階段", actor: "Emp B + AI", action: "Plan 生成", output: "實作計畫", icon: Cpu, ai: true },
+            { stage: "審核階段", actor: "Emp B, C", action: "共同審核 Plan", output: "定案計畫", icon: GitMerge, ai: false },
+            { stage: "AI 開發階段", actor: "Emp B + AI", action: "程式開發", output: "Java 程式", icon: Code, ai: true },
+            { stage: "AI 開發階段", actor: "Emp C + AI", action: "資料庫開發", output: "Oracle SQL", icon: Database, ai: true },
+            { stage: "測試階段", actor: "Emp B, C, AI", action: "整合測試", output: "自動化測試報告", icon: Activity, ai: true },
+            { stage: "驗收階段", actor: "Employee A", action: "UAT (內部驗收)", output: "驗收與 Spec 比對", icon: ShieldCheck, ai: false },
+            { stage: "驗收階段", actor: "User", action: "UAT (用戶驗收)", output: "上線許可", icon: CheckCircle, ai: false },
+        ];
+
+        const SpecBreakdown = () => (
+            // 優化3: 增加陰影 shadow-sm 讓區塊更立體，保留漸層背景但確保邊界清晰
+            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 p-6 rounded-xl border border-violet-100 shadow-sm my-8">
+                <h3 className="text-xl font-bold text-violet-900 mb-4 flex items-center">
+                    <Bot className="w-6 h-6 mr-2 text-violet-600" />
+                    核心變革：Spec 文件 (AI 微型技術規格書)
+                </h3>
+                <p className="text-gray-600 mb-6">
+                    在未來模式中，不再撰寫冗長的傳統文件，而是聚焦於一份給 AI 閱讀的高密度規格書。這份文件是人類邏輯與 AI 實作的橋樑。
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* 優化4: 內部卡片加上 shadow-md 與 border-slate-200，在淺色背景上更突出 */}
+                    <div className="bg-white p-4 rounded-lg border border-slate-200 border-t-4 border-t-blue-500 shadow-md">
+                        <div className="text-2xl font-bold text-blue-600 mb-1">60%</div>
+                        <div className="font-bold text-gray-800">PRD 需求面</div>
+                        <p className="text-sm text-gray-500 mt-2">清楚定義業務目標、使用者故事與驗收標準。確保 AI 理解「為什麼要做」。</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-slate-200 border-t-4 border-t-emerald-500 shadow-md">
+                        <div className="text-2xl font-bold text-emerald-600 mb-1">30%</div>
+                        <div className="font-bold text-gray-800">SA 邏輯分析</div>
+                        <p className="text-sm text-gray-500 mt-2">定義資料流向、狀態變化與業務規則邏輯。確保 AI 理解「邏輯是如何運作」。</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border border-slate-200 border-t-4 border-t-amber-500 shadow-md">
+                        <div className="text-2xl font-bold text-amber-600 mb-1">10%</div>
+                        <div className="font-bold text-gray-800">SD 架構限制</div>
+                        <p className="text-sm text-gray-500 mt-2">指定技術框架、資料庫結構限制與命名規則。確保 AI 產出的程式碼符合系統規範。</p>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const RoleComparison = () => (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-8">
+                {[
+                    {
+                        role: "Employee A",
+                        title: "Key User / BA",
+                        from: "文件撰寫者",
+                        to: "需求守門員",
+                        desc: "不再耗時撰寫初版 SA 與詳細 PRD。轉而專注於挖掘用戶真實需求，並驗收 AI 生成結果是否符合商業邏輯。",
+                        colorName: "blue",
+                        colorObj: roleColors["Employee A"]
+                    },
+                    {
+                        role: "Employee B",
+                        title: "SA / Backend",
+                        from: "全端實作者",
+                        to: "AI 協作駕駛",
+                        desc: "從繁瑣的編碼與文件工作中解放。轉型為 Spec 設計者，指導 AI 進行開發，並負責核心架構與安全性審核。",
+                        colorName: "emerald",
+                        colorObj: roleColors["Employee B"]
+                    },
+                    {
+                        role: "Employee C",
+                        title: "DBA / Dev",
+                        from: "資料庫開發",
+                        to: "資料治理與整合",
+                        desc: "利用 AI 快速生成 SQL 與 Schema。工作重心轉向效能調校、數據整合與複雜邏輯的技術審查。",
+                        colorName: "amber",
+                        colorObj: roleColors["Employee C"]
+                    }
+                ].map((item, idx) => (
+                    // 優化5: 角色卡片增加 shadow-md 和更深的邊框 border-slate-200，增強立體感
+                    <div key={idx} className={`bg-white p-6 rounded-xl border border-slate-200 shadow-md border-l-4 ${item.colorObj.border.replace('border-', 'border-l-')}`}>
+                        <div className={`flex items-center justify-between mb-2`}>
+                            <div className={`${item.colorObj.text} font-bold text-lg`}>{item.role}</div>
+                            <div className={`px-2 py-0.5 rounded text-xs font-medium ${item.colorObj.bg} ${item.colorObj.text}`}>
+                                {item.title}
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between mb-4 bg-slate-50 p-3 rounded border border-slate-200">
+                            <span className="text-xs font-bold text-gray-500 line-through">{item.from}</span>
+                            <ArrowRight className="w-4 h-4 text-gray-400" />
+                            <span className={`text-sm font-bold ${item.colorObj.text}`}>{item.to}</span>
+                        </div>
+                        
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                            {item.desc}
+                        </p>
+                    </div>
+                ))}
+            </div>
+        );
+
+        const FlowVisualizer = ({ flow, type }) => {
+            return (
+                <div className="space-y-4 relative">
+                    {/* Connection Line - 加深顏色為 bg-slate-300 */}
+                    <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-slate-300 z-0"></div>
+                    
+                    {flow.map((step, index) => {
+                        const style = getRoleColor(step.actor);
+                        return (
+                        <div key={index} className="relative z-10 flex items-start group">
+                            {/* Icon Circle */}
+                            <div className={`
+                                w-12 h-12 rounded-full flex items-center justify-center shrink-0 
+                                border-4 border-white shadow-md transition-colors
+                                ${step.ai ? 'bg-violet-600 text-white' : 'bg-white text-slate-500'}
+                            `}>
+                                {step.ai ? <Bot size={20} /> : <step.icon size={20} className={style.icon} />}
+                            </div>
+                            
+                            {/* Card Body */}
+                            {/* 優化6: 卡片背景保持白色，但加上顯著的 shadow-sm 和 border-slate-200。
+                                如果是 AI 步驟，給予極淡的紫色背景 (bg-violet-50/40) 以示區別 */}
+                            <div className={`
+                                ml-4 flex-1 step-card p-4 rounded-lg border 
+                                ${step.ai 
+                                    ? 'bg-violet-50/40 border-violet-200 shadow-md' 
+                                    : 'bg-white border-slate-200 shadow-sm'}
+                            `}>
+                                <div className="flex justify-between items-start mb-1">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{step.stage}</span>
+                                    {step.ai && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium flex items-center"><Zap size={10} className="mr-1 fill-current"/>AI 協作</span>}
+                                </div>
+                                <h4 className={`font-bold ${step.ai ? 'text-violet-900' : 'text-slate-800'}`}>{step.action}</h4>
+                                <div className="text-sm text-slate-600 mt-2 flex items-center">
+                                    {/* Actor Badge */}
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mr-2 ${style.bg} ${style.text}`}>
+                                        <Users size={12} className="mr-1" />
+                                        {step.actor}
+                                    </span>
+                                </div>
+                                <div className="mt-2 pt-2 border-t border-slate-100 text-xs text-slate-500 flex items-center">
+                                    <FileText size={12} className="mr-1.5" />
+                                    產出：{step.output}
+                                </div>
+                            </div>
+                        </div>
+                    )})}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('comparison');
+
+            return (
+                <div className="min-h-screen bg-slate-100 text-slate-900 pb-20">
+                    {/* Header - 增加陰影 */}
+                    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-md">
+                        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                                <div className="bg-indigo-600 p-1.5 rounded-lg shadow-sm">
+                                    <Cpu className="text-white w-5 h-5" />
+                                </div>
+                                <h1 className="text-lg font-bold text-slate-800">開發流程轉型簡報</h1>
+                            </div>
+                            <nav className="flex space-x-1">
+                                <button 
+                                    onClick={() => setActiveTab('comparison')}
+                                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'comparison' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    流程對比
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('details')}
+                                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'details' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    詳細分析
+                                </button>
+                            </nav>
+                        </div>
+                    </header>
+
+                    <main className="max-w-6xl mx-auto px-4 pt-8">
+                        {/* Intro Section */}
+                        <div className="mb-12 text-center">
+                            <h2 className="text-3xl font-bold text-slate-900 mb-4">從「人寫文件」到「人機協作」</h2>
+                            <p className="text-lg text-slate-600 max-w-3xl mx-auto">
+                                透過導入 AI 輔助開發，我們將傳統的瀑布式文檔流程，轉型為以 Spec 為核心的敏捷協作模式。
+                                目標是減少重複性文書工作，並大幅提升程式碼產出的速度與一致性。
+                            </p>
+                        </div>
+
+                        {activeTab === 'comparison' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Current State */}
+                                <div>
+                                    <div className="flex items-center justify-center mb-6">
+                                        <div className="bg-slate-200 text-slate-700 px-4 py-1.5 rounded-full text-sm font-bold flex items-center shadow-sm">
+                                            <div className="w-2 h-2 rounded-full bg-slate-500 mr-2"></div>
+                                            現況 (Current)
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-200/50 p-4 rounded-2xl border border-slate-300">
+                                        <FlowVisualizer flow={currentFlow} type="current" />
+                                    </div>
+                                </div>
+
+                                {/* Future State */}
+                                <div>
+                                    <div className="flex items-center justify-center mb-6">
+                                        <div className="bg-violet-600 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-violet-200 flex items-center">
+                                            <div className="w-2 h-2 rounded-full bg-green-300 mr-2 animate-pulse"></div>
+                                            未來 (Future)
+                                        </div>
+                                    </div>
+                                    <div className="bg-violet-100/50 p-4 rounded-2xl border border-violet-200">
+                                        <FlowVisualizer flow={futureFlow} type="future" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'details' && (
+                            <div className="animate-fade-in">
+                                {/* Spec Breakdown Section */}
+                                <section className="mb-12">
+                                    <h2 className="text-2xl font-bold text-slate-800 mb-6 border-l-4 border-violet-500 pl-4">技術核心：Spec 文件結構</h2>
+                                    <SpecBreakdown />
+                                </section>
+
+                                {/* Role Transformation */}
+                                <section className="mb-12">
+                                    <h2 className="text-2xl font-bold text-slate-800 mb-6 border-l-4 border-indigo-500 pl-4">角色職責轉型矩陣</h2>
+                                    <RoleComparison />
+                                </section>
+
+                                {/* Benefits Summary */}
+                                <section>
+                                    <h2 className="text-2xl font-bold text-slate-800 mb-6 border-l-4 border-emerald-500 pl-4">導入效益總結</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* 優化7: 效益卡片增加 shadow-md 與 border-slate-200 */}
+                                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-md hover:border-emerald-200 transition-colors">
+                                            <h3 className="font-bold text-lg text-slate-800 mb-3 flex items-center">
+                                                <div className="p-2 bg-emerald-100 rounded-lg mr-3">
+                                                    <Zap className="w-5 h-5 text-emerald-600" />
+                                                </div>
+                                                效率與速度
+                                            </h3>
+                                            <ul className="space-y-3 text-slate-600">
+                                                <li className="flex items-start">
+                                                    <CheckCircle className="w-5 h-5 text-emerald-500 mr-2 shrink-0 mt-0.5" />
+                                                    <span>大幅縮短編碼時間：Java 與 SQL 由 AI 根據 Spec 自動生成。</span>
+                                                </li>
+                                                <li className="flex items-start">
+                                                    <CheckCircle className="w-5 h-5 text-emerald-500 mr-2 shrink-0 mt-0.5" />
+                                                    <span>並行開發：前端邏輯與資料庫設計可在 AI 輔助下同步進行。</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-md hover:border-blue-200 transition-colors">
+                                            <h3 className="font-bold text-lg text-slate-800 mb-3 flex items-center">
+                                                <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                                                    <ShieldCheck className="w-5 h-5 text-blue-600" />
+                                                </div>
+                                                品質與標準化
+                                            </h3>
+                                            <ul className="space-y-3 text-slate-600">
+                                                <li className="flex items-start">
+                                                    <CheckCircle className="w-5 h-5 text-blue-500 mr-2 shrink-0 mt-0.5" />
+                                                    <span>減少人為錯誤：Spec 定義清楚架構限制，AI 產出符合規範的程式碼。</span>
+                                                </li>
+                                                <li className="flex items-start">
+                                                    <CheckCircle className="w-5 h-5 text-blue-500 mr-2 shrink-0 mt-0.5" />
+                                                    <span>文檔即代碼：Spec 文件成為真實且具備執行力的單一真理來源。</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        )}
+                    </main>
+
+                    <footer className="max-w-6xl mx-auto px-4 mt-16 pt-8 border-t border-slate-200 text-center text-slate-400 text-sm">
+                        <p>© 2025 開發流程優化專案組</p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
