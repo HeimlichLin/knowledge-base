@@ -1,0 +1,23 @@
+# Jekyll 配置檔案 - 用於 GitHub Pages
+title: 個人知識庫
+description: 個人文件知識庫 - 收集與整理各種筆記與文件
+baseurl: ""
+url: "https://knowledge-base.zeabur.app"
+
+# 主題設定
+theme: jekyll-theme-minimal
+
+# Markdown 設定
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+
+# 編碼設定
+encoding: utf-8
+
+# 排除不需要處理的檔案
+exclude:
+  - README.md
+  - LICENSE
+  - .gitignore
