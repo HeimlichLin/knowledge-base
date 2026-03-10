@@ -1,0 +1,4 @@
+{
+  "build_command": "bundle exec jekyll build --config _config_zeabur.yml",
+  "output_dir": "_site"
+}
