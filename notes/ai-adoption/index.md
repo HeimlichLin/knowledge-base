@@ -11,6 +11,7 @@ title: AI 導入與策略
 
 - [企業 AI 導入策略規劃：從個人賦能到供應鏈優化](enterprise-ai-adoption-strategy.html)
 - [開發模式轉型比較：傳統 vs AI 協作](traditional-vs-ai-workflow.html)
+- [OpsWiki Agent 年度導入專案企劃書](opswiki-agent-annual-plan.html)
 
 ---
 
