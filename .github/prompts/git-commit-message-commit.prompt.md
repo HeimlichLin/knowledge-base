@@ -1,6 +1,7 @@
 ---
 agent: agent
-tools: ["changes", "runCommands"]
+model: GPT-5 mini (copilot)
+tools: ['execute/getTerminalOutput', 'execute/runInTerminal', 'read/terminalSelection', 'read/terminalLastCommand', 'search/changes']
 description: '將會讀取 git staged, 並將變更整理成中文格式, 尊循 Conventional Commits 風格. 接著, 它將執行 commit 將剛整理的訊息提交到目前的分支.'
 ---
 

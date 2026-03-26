@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圖片自動縮放與補齊工具 | 240x240 批量處理</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .drag-over { background-color: #eff6ff; border-color: #3b82f6; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* 棋盤格背景，用於顯示透明區域 */
+        .bg-checkerboard {
+            background-color: #ffffff;
+            background-image:
+                linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+                linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+                linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        /* 自訂顏色選擇器外觀 */
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 1px solid #d1d5db; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        
+        <div class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 flex items-center justify-center gap-3">
+                <i data-lucide="maximize" class="w-8 h-8 text-blue-600"></i>
+                圖片自動縮放與色彩去背工具
+            </h1>
+            <p class="text-gray-500 max-w-2xl mx-auto">
+                上傳照片，系統會自動將原圖等比例縮小並置中於 240 x 240 畫布中。<br>
+                <span class="text-blue-600 font-medium mt-1 inline-block">全新升級：支援「邊緣連續消除（魔術棒）」與「全域消除」兩種色彩去背模式。</span><br>
+                處理過程 100% 在您的瀏覽器本地進行，速度極快且保護隱私。
+            </p>
+        </div>
+
+        <div id="dropZone" class="relative bg-white border-2 border-dashed border-gray-300 rounded-2xl p-10 text-center transition-colors duration-200 cursor-pointer hover:bg-gray-50 mb-8">
+            <input type="file" id="fileInput" multiple accept="image/jpeg, image/png, image/webp" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+            <div class="flex flex-col items-center pointer-events-none">
+                <i data-lucide="upload-cloud" class="w-16 h-16 text-gray-400 mb-4"></i>
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">點擊選擇照片，或將照片拖曳到此處</h3>
+                <p class="text-sm text-gray-500">支援 JPG, PNG 格式 (可一次選擇多張)</p>
+            </div>
+        </div>
+
+        <div id="progressContainer" class="hidden mb-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex justify-between items-center mb-2">
+                <span class="font-medium text-gray-700 flex items-center gap-2">處理進度</span>
+                <span id="progressText" class="text-blue-600 font-semibold">0 / 0</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <i data-lucide="image" class="w-5 h-5"></i>
+                照片列表 <span id="resultCount" class="text-gray-500 text-base font-normal">(0 張)</span>
+            </h2>
+            
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- 色彩去背選項群組 -->
+                <div class="flex flex-col gap-3 bg-white px-4 py-3 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="removeColorCheckbox" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                            <span class="text-sm font-bold text-gray-700">啟用色彩去背</span>
+                        </label>
+                        
+                        <div class="flex flex-wrap items-center gap-3 border-l border-gray-200 pl-4 opacity-50 transition-opacity" id="colorControls">
+                            <label class="text-xs text-gray-500 flex items-center gap-1">
+                                模式:
+                                <select id="removalMode" class="border border-gray-300 rounded px-1 py-1 bg-white text-gray-700 outline-none" disabled title="決定去背的演算方式">
+                                    <option value="contiguous">邊緣連續消除 (保留主體內部)</option>
+                                    <option value="global">全域消除 (所有指定顏色皆透明)</option>
+                                </select>
+                            </label>
+
+                            <label class="text-xs text-gray-500 flex items-center gap-1">
+                                顏色:
+                                <!-- 預設改為純白色 #ffffff，符合目前範例圖片 -->
+                                <input type="color" id="bgColorPicker" value="#ffffff" disabled title="點擊選擇要消除的背景顏色">
+                            </label>
+                            
+                            <label class="text-xs text-gray-500 flex items-center gap-1">
+                                容差值: <span id="tolValue" class="w-6 text-right font-mono">15</span>
+                                <input type="range" id="toleranceSlider" min="0" max="150" value="15" class="w-20" disabled title="數值越大，消除的相近顏色越多">
+                            </label>
+                        </div>
+                    </div>
+
+                    <label class="flex items-center gap-2 cursor-pointer opacity-50 transition-opacity" id="transparentLabel">
+                        <input type="checkbox" id="transparentPngCheckbox" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" disabled>
+                        <span class="text-xs font-medium text-gray-600">保留透明背景 (匯出 PNG 格式，若不勾則補純白底)</span>
+                    </label>
+                </div>
+
+                <button id="startProcessBtn" class="hidden flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-sm">
+                    <i data-lucide="play" class="w-5 h-5"></i>
+                    開始處理
+                </button>
+                <button id="downloadBtn" class="hidden flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-sm">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    打包下載全部 (ZIP)
+                </button>
+            </div>
+        </div>
+
+        <div id="gallery" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        let pendingFiles = [];
+        let processedImages = [];
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const gallery = document.getElementById('gallery');
+        const startProcessBtn = document.getElementById('startProcessBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resultCount = document.getElementById('resultCount');
+        
+        // 控制項
+        const removeColorCheckbox = document.getElementById('removeColorCheckbox');
+        const bgColorPicker = document.getElementById('bgColorPicker');
+        const toleranceSlider = document.getElementById('toleranceSlider');
+        const tolValue = document.getElementById('tolValue');
+        const transparentPngCheckbox = document.getElementById('transparentPngCheckbox');
+        const colorControls = document.getElementById('colorControls');
+        const transparentLabel = document.getElementById('transparentLabel');
+        const removalMode = document.getElementById('removalMode');
+
+        // 更新容差值顯示
+        toleranceSlider.addEventListener('input', (e) => {
+            tolValue.innerText = e.target.value;
+        });
+
+        // 連動 Checkbox 與控制項狀態
+        removeColorCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            bgColorPicker.disabled = !isChecked;
+            toleranceSlider.disabled = !isChecked;
+            transparentPngCheckbox.disabled = !isChecked;
+            removalMode.disabled = !isChecked;
+            
+            if (isChecked) {
+                colorControls.classList.remove('opacity-50');
+                transparentLabel.classList.remove('opacity-50');
+                transparentPngCheckbox.checked = true; // 預設勾選透明輸出
+            } else {
+                colorControls.classList.add('opacity-50');
+                transparentLabel.classList.add('opacity-50');
+                transparentPngCheckbox.checked = false;
+            }
+        });
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault(); dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFiles(e.target.files);
+            fileInput.value = '';
+        });
+
+        function handleFiles(files) {
+            const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            if (imageFiles.length === 0) return;
+            pendingFiles.push(...imageFiles);
+            renderGallery();
+        }
+
+        startProcessBtn.addEventListener('click', async () => {
+            if (pendingFiles.length === 0) return;
+
+            // 鎖定介面
+            removeColorCheckbox.disabled = true;
+            bgColorPicker.disabled = true;
+            toleranceSlider.disabled = true;
+            transparentPngCheckbox.disabled = true;
+            removalMode.disabled = true;
+
+            startProcessBtn.classList.remove('flex');
+            startProcessBtn.classList.add('hidden');
+            progressContainer.classList.remove('hidden');
+            
+            let completed = 0;
+            const total = pendingFiles.length;
+            updateProgress(completed, total);
+
+            // 取得使用者設定的去背參數
+            const doRemoveColor = removeColorCheckbox.checked;
+            const targetColorHex = bgColorPicker.value;
+            const tolerance = parseInt(toleranceSlider.value, 10);
+            const exportTransparent = transparentPngCheckbox.checked;
+            const mode = removalMode.value;
+
+            while(pendingFiles.length > 0) {
+                const file = pendingFiles.shift();
+                try {
+                    const resultItem = await processSingleImage(file, doRemoveColor, targetColorHex, tolerance, exportTransparent, mode);
+                    processedImages.push(resultItem);
+                } catch (err) {
+                    console.error(`處理照片 ${file.name} 發生錯誤:`, err);
+                }
+                completed++;
+                updateProgress(completed, total);
+                renderGallery(); 
+            }
+
+            setTimeout(() => {
+                progressContainer.classList.add('hidden');
+                // 解除鎖定
+                removeColorCheckbox.disabled = false;
+                if(removeColorCheckbox.checked) {
+                    bgColorPicker.disabled = false;
+                    toleranceSlider.disabled = false;
+                    transparentPngCheckbox.disabled = false;
+                    removalMode.disabled = false;
+                }
+            }, 500);
+        });
+
+        function updateProgress(current, total) {
+            const percentage = (current / total) * 100;
+            progressBar.style.width = `${percentage}%`;
+            progressText.innerText = `${current} / ${total}`;
+        }
+
+        /**
+         * 演算法一：全域像素色彩移除 (Global Chroma Key)
+         * 掃描全圖，符合容差範圍的顏色皆設為透明。
+         */
+        function globalRemoveColor(ctx, width, height, hexColor, tolerance) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+
+            const targetR = parseInt(hexColor.slice(1, 3), 16);
+            const targetG = parseInt(hexColor.slice(3, 5), 16);
+            const targetB = parseInt(hexColor.slice(5, 7), 16);
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+
+                const distance = Math.sqrt(
+                    Math.pow(r - targetR, 2) + 
+                    Math.pow(g - targetG, 2) + 
+                    Math.pow(b - targetB, 2)
+                );
+
+                if (distance <= tolerance) {
+                    data[i + 3] = 0; 
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        /**
+         * 演算法二：邊緣連續消除 (Flood Fill / Magic Wand)
+         * 從圖片的四個邊界開始進行深度優先搜尋 (DFS)，遇到顏色差異過大的線條即停止蔓延。
+         */
+        function contiguousRemoveColor(ctx, width, height, hexColor, tolerance) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            
+            const targetR = parseInt(hexColor.slice(1, 3), 16);
+            const targetG = parseInt(hexColor.slice(3, 5), 16);
+            const targetB = parseInt(hexColor.slice(5, 7), 16);
+
+            // 建立已拜訪陣列，避免重複計算導致無窮迴圈
+            const visited = new Uint8Array(width * height);
+            const stack = [];
+
+            // 判斷顏色是否在容差範圍內
+            function matchColor(r, g, b) {
+                const distance = Math.sqrt(
+                    Math.pow(r - targetR, 2) + 
+                    Math.pow(g - targetG, 2) + 
+                    Math.pow(b - targetB, 2)
+                );
+                return distance <= tolerance;
+            }
+
+            // 1. 將四個邊界符合目標顏色的像素推入堆疊 (Stack) 作為起始點
+            for (let y = 0; y < height; y++) {
+                for (let x of [0, width - 1]) {
+                    const idx = (y * width + x) * 4;
+                    if (!visited[y * width + x] && matchColor(data[idx], data[idx+1], data[idx+2])) {
+                        stack.push(x, y);
+                        visited[y * width + x] = 1;
+                    }
+                }
+            }
+            for (let x = 0; x < width; x++) {
+                for (let y of [0, height - 1]) {
+                    const idx = (y * width + x) * 4;
+                    if (!visited[y * width + x] && matchColor(data[idx], data[idx+1], data[idx+2])) {
+                        stack.push(x, y);
+                        visited[y * width + x] = 1;
+                    }
+                }
+            }
+
+            // 2. 執行迭代式深度優先搜尋 (Iterative DFS) 進行洪泛填充
+            while (stack.length > 0) {
+                const cy = stack.pop();
+                const cx = stack.pop();
+
+                // 將該像素設定為透明
+                const pixelIdx = (cy * width + cx) * 4;
+                data[pixelIdx + 3] = 0;
+
+                // 檢查上下左右相鄰的四個像素
+                const neighbors = [
+                    [cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]
+                ];
+
+                for (let i = 0; i < neighbors.length; i++) {
+                    const nx = neighbors[i][0];
+                    const ny = neighbors[i][1];
+
+                    // 確保不超出邊界
+                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                        const vIdx = ny * width + nx;
+                        if (!visited[vIdx]) {
+                            const nIdx = vIdx * 4;
+                            // 若相鄰像素也是目標顏色，則繼續蔓延
+                            if (matchColor(data[nIdx], data[nIdx+1], data[nIdx+2])) {
+                                visited[vIdx] = 1;
+                                stack.push(nx, ny);
+                            }
+                        }
+                    }
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // 核心邏輯重構：色彩去背 -> 縮放 -> 補白/透明
+        async function processSingleImage(file, doRemoveColor, targetColorHex, tolerance, exportTransparent, mode) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        try {
+                            // 步驟 1：建立原尺寸畫布以進行去背運算
+                            const sourceCanvas = document.createElement('canvas');
+                            sourceCanvas.width = img.width;
+                            sourceCanvas.height = img.height;
+                            const sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
+                            sourceCtx.drawImage(img, 0, 0);
+
+                            // 執行去背演算法
+                            if (doRemoveColor && tolerance > 0) {
+                                if (mode === 'global') {
+                                    globalRemoveColor(sourceCtx, img.width, img.height, targetColorHex, tolerance);
+                                } else {
+                                    contiguousRemoveColor(sourceCtx, img.width, img.height, targetColorHex, tolerance);
+                                }
+                            }
+
+                            // 步驟 2：執行 240x240 縮放與最終畫布繪製
+                            const TARGET_SIZE = 240;
+                            const finalCanvas = document.createElement('canvas');
+                            finalCanvas.width = TARGET_SIZE;
+                            finalCanvas.height = TARGET_SIZE;
+                            const ctx = finalCanvas.getContext('2d');
+
+                            // 若非透明輸出，底層墊上純白色
+                            const isTransparentOutput = doRemoveColor && exportTransparent;
+                            if (!isTransparentOutput) {
+                                ctx.fillStyle = '#FFFFFF';
+                                ctx.fillRect(0, 0, TARGET_SIZE, TARGET_SIZE);
+                            }
+
+                            // 計算置中與縮放比例
+                            const scale = Math.min(TARGET_SIZE / img.width, TARGET_SIZE / img.height);
+                            const scaledWidth = img.width * scale;
+                            const scaledHeight = img.height * scale;
+                            const offsetX = (TARGET_SIZE - scaledWidth) / 2;
+                            const offsetY = (TARGET_SIZE - scaledHeight) / 2;
+
+                            ctx.imageSmoothingEnabled = true;
+                            ctx.imageSmoothingQuality = 'high';
+                            
+                            // 將去背後的來源畫布繪製到最終 240x240 的畫布上
+                            ctx.drawImage(sourceCanvas, offsetX, offsetY, scaledWidth, scaledHeight);
+                            
+                            // 決定匯出格式
+                            const mimeType = isTransparentOutput ? 'image/png' : 'image/jpeg';
+                            const fileExt = isTransparentOutput ? 'png' : 'jpg';
+                            const dataUrl = finalCanvas.toDataURL(mimeType, 0.95);
+                            
+                            resolve({
+                                originalName: file.name,
+                                finalName: `processed_${file.name.replace(/\.[^/.]+$/, "")}.${fileExt}`,
+                                dataUrl: dataUrl,
+                                isBgRemoved: doRemoveColor, 
+                                isTransparentOutput: isTransparentOutput
+                            });
+
+                        } catch (err) {
+                            reject(err);
+                        }
+                    };
+                    img.onerror = () => reject(new Error("圖片載入失敗"));
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => reject(new Error("檔案讀取失敗"));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderGallery() {
+            gallery.innerHTML = ''; 
+
+            processedImages.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col group relative";
+                
+                let badgeHtml = '';
+                if (item.isBgRemoved && item.isTransparentOutput) {
+                    badgeHtml = `<span class="absolute top-5 right-5 bg-purple-600 text-white text-[10px] px-2 py-1 rounded-md shadow-sm opacity-90 z-10 flex items-center gap-1"><i data-lucide="wand-2" class="w-3 h-3"></i> 去背 PNG</span>`;
+                } else if (item.isBgRemoved) {
+                    badgeHtml = `<span class="absolute top-5 right-5 bg-purple-500 text-white text-[10px] px-2 py-1 rounded-md shadow-sm opacity-90 z-10 flex items-center gap-1"><i data-lucide="wand-2" class="w-3 h-3"></i> 去背 + 白底</span>`;
+                } else {
+                    badgeHtml = `<span class="absolute top-5 right-5 bg-blue-500 text-white text-[10px] px-2 py-1 rounded-md shadow-sm opacity-90 z-10">原圖補齊</span>`;
+                }
+
+                const containerBgClass = item.isTransparentOutput ? 'bg-checkerboard' : 'bg-white';
+
+                div.innerHTML = `
+                    ${badgeHtml}
+                    <div class="img-container w-full aspect-square overflow-hidden rounded-lg ${containerBgClass} mb-3 relative cursor-pointer border border-gray-200 shadow-inner">
+                        <span class="absolute bottom-2 right-2 bg-gray-800/80 text-white text-[10px] px-2 py-1 rounded-md shadow-sm z-10">240x240</span>
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20 duration-300">
+                            <i data-lucide="external-link" class="text-white w-8 h-8"></i>
+                        </div>
+                        <img src="${item.dataUrl}" alt="${item.finalName}" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105">
+                    </div>
+                    <div class="mt-auto">
+                        <p class="text-xs text-gray-500 truncate" title="${item.finalName}">${item.finalName}</p>
+                    </div>
+                `;
+                
+                const imgContainer = div.querySelector('.img-container');
+                imgContainer.addEventListener('click', () => {
+                    const win = window.open('', '_blank');
+                    if (win) {
+                        const winBg = item.isTransparentOutput ? 'background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;' : 'background-color: #0f172a;';
+                        win.document.write(`
+                            <!DOCTYPE html>
+                            <html><head><title>${item.finalName} - 預覽</title><style>body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; ${winBg} } img { max-width: 100%; max-height: 100vh; object-fit: contain; box-shadow: 0 0 20px rgba(0,0,0,0.5); }</style></head>
+                            <body><img src="${item.dataUrl}" alt="${item.finalName}"></body></html>
+                        `);
+                        win.document.close();
+                    }
+                });
+                gallery.appendChild(div);
+            });
+
+            pendingFiles.forEach(file => {
+                const url = URL.createObjectURL(file);
+                const div = document.createElement('div');
+                div.className = "bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex flex-col group relative opacity-80 border-dashed";
+                div.innerHTML = `
+                    <span class="absolute top-5 right-5 bg-yellow-500 text-white text-[10px] px-2 py-1 rounded-md shadow-sm opacity-90 z-10">待處理</span>
+                    <div class="w-full aspect-square overflow-hidden rounded-lg bg-gray-100 mb-3 relative border border-gray-200">
+                        <img src="${url}" alt="${file.name}" class="w-full h-full object-cover grayscale-[30%] opacity-80">
+                    </div>
+                    <div class="mt-auto"><p class="text-xs text-gray-500 truncate" title="${file.name}">${file.name}</p></div>
+                `;
+                div.querySelector('img').onload = () => URL.revokeObjectURL(url);
+                gallery.appendChild(div);
+            });
+            
+            resultCount.innerText = processedImages.length || pendingFiles.length ? `(已處理: ${processedImages.length} | 待處理: ${pendingFiles.length})` : `(0 張)`;
+            
+            startProcessBtn.classList.toggle('hidden', pendingFiles.length === 0);
+            startProcessBtn.classList.toggle('flex', pendingFiles.length > 0);
+            downloadBtn.classList.toggle('hidden', processedImages.length === 0);
+            downloadBtn.classList.toggle('flex', processedImages.length > 0);
+            lucide.createIcons();
+        }
+
+        downloadBtn.addEventListener('click', async () => {
+            if (processedImages.length === 0) return;
+            const originalBtnHtml = downloadBtn.innerHTML;
+            downloadBtn.innerHTML = `<div class="loader" style="width:16px; height:16px; border-width:2px;"></div> 打包中...`;
+            downloadBtn.disabled = true;
+            try {
+                const zip = new JSZip();
+                processedImages.forEach(item => zip.file(item.finalName, item.dataUrl.split(',')[1], {base64: true}));
+                saveAs(await zip.generateAsync({type: "blob"}), "Processed_Photos.zip");
+            } catch (error) {
+                alert("打包壓縮檔時發生錯誤。");
+            } finally {
+                downloadBtn.innerHTML = originalBtnHtml;
+                downloadBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
